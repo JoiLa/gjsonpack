@@ -81,10 +81,45 @@ func Pack(json interface{}) (string, error) {
 
 // Unpack 解压 packed 参数中的数据
 func Unpack(packed string, v interface{}) error {
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return &json.InvalidUnmarshalError{Type: reflect.TypeOf(v)}
+	unPackerParser, unPackerParserErr := _unpack(packed)
+	if unPackerParserErr != nil {
+		return unPackerParserErr
 	}
+	jsonBytes, jsonMarshalErr := json.Marshal(unPackerParser)
+	if jsonMarshalErr != nil {
+		return jsonMarshalErr
+	}
+	jsonUnmarshalErr := json.Unmarshal(jsonBytes, v)
+	if jsonUnmarshalErr != nil {
+		return jsonUnmarshalErr
+	}
+	return nil
+}
+
+// UnpackToStr 解压 packed 参数中的数据并返回字符串
+func UnpackToStr(packed string) (string, error) {
+	jsonBytes, err := UnpackToBytes(packed)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
+}
+
+// UnpackToBytes 解压 packed 参数中的数据并返回字节
+func UnpackToBytes(packed string) ([]byte, error) {
+	unPackerParser, unPackerParserErr := _unpack(packed)
+	if unPackerParserErr != nil {
+		return nil, unPackerParserErr
+	}
+	jsonBytes, jsonMarshalErr := json.Marshal(unPackerParser)
+	if jsonMarshalErr != nil {
+		return nil, jsonMarshalErr
+	}
+	return jsonBytes, nil
+}
+
+// _unpack 解压 packed 参数中的数据
+func _unpack(packed string) (interface{}, error) {
 	// A raw buffer
 	var rawBuffers = strings.Split(packed, "^")
 	dictionarySlice := make([]interface{}, 0)
@@ -106,7 +141,7 @@ func Unpack(packed string, v interface{}) error {
 		for i := 0; i < bufferSliceLen; i++ {
 			to10Hex, to10HexErr := _baseString36To10(bufferSlice[i])
 			if to10HexErr != nil {
-				return to10HexErr
+				return nil, to10HexErr
 			}
 			dictionarySlice = append(dictionarySlice, to10Hex)
 		}
@@ -119,7 +154,7 @@ func Unpack(packed string, v interface{}) error {
 		for i := 0; i < bufferSliceLen; i++ {
 			to10Hex, to10HexErr := strconv.ParseFloat(bufferSlice[i], 10)
 			if to10HexErr != nil {
-				return to10HexErr
+				return nil, to10HexErr
 			}
 			dictionarySlice = append(dictionarySlice, to10Hex)
 		}
@@ -136,7 +171,7 @@ func Unpack(packed string, v interface{}) error {
 				if number36 != "" {
 					to10Hex, to10HexErr := _baseString36To10(number36)
 					if to10HexErr != nil {
-						return to10HexErr
+						return nil, to10HexErr
 					}
 					tokenSlice = append(tokenSlice, to10Hex)
 					number36 = ""
@@ -158,17 +193,10 @@ func Unpack(packed string, v interface{}) error {
 	// 递归解析
 	unPackerParser, unPackerParserErr := recursiveUnPackerParser(dictionarySlice, tokenSlice, dictionarySliceLen, tokenSliceLen, &tokensIndex)
 	if unPackerParserErr != nil {
-		return unPackerParserErr
+		return nil, unPackerParserErr
 	}
-	jsonBytes, jsonMarshalErr := json.Marshal(unPackerParser)
-	if jsonMarshalErr != nil {
-		return jsonMarshalErr
-	}
-	jsonUnmarshalErr := json.Unmarshal(jsonBytes, v)
-	if jsonUnmarshalErr != nil {
-		return jsonUnmarshalErr
-	}
-	return nil
+	return unPackerParser, nil
+
 }
 
 // recursiveUnPackerParser 递归解析
