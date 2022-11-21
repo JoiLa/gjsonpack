@@ -581,7 +581,7 @@ func _baseInt10To36(number int64) string {
 
 // _baseInt10To36 36进制转10进制
 func _baseString36To10(number string) (int64, error) {
-	return strconv.ParseInt(strings.ToLower(number), 36, 10)
+	return strconv.ParseInt(strings.ToLower(number), 36, 64)
 }
 
 // _arrayFloatToArrayString 数组类型转换
